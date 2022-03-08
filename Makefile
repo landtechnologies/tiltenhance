@@ -30,4 +30,4 @@ install-deps:
 
 ## Run tests
 test: install-deps
-	pipenv run pytest
+	pipenv run test
