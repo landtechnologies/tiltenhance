@@ -1,3 +1,5 @@
+load('../helpers/Tiltfile', 'merge_dicts')
+
 def docker_local(ref,
                  context,
                  dockerfile='Dockerfile',
@@ -15,12 +17,6 @@ def docker_local(ref,
     local_resource("%s" % ref,
                    " ".join(exec_command),
                    resource_deps=runtime_deps + [build_step])
-
-
-def merge_two_dicts(x, y):
-    z = dict(x)   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
 
 def docker_remote(ref,
                   build_context,
@@ -83,7 +79,7 @@ def docker_remote(ref,
             "backoffLimit": 0,
             "template": {
                 "metadata": {
-                    "annotations": merge_two_dicts({
+                    "annotations": merge_dicts({
                         "sidecar.istio.io/inject": "false"
                     }, annotations)
                 },

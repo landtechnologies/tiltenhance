@@ -35,3 +35,8 @@ def get_cluster_name():
 
 def get_hosted_zone_name():
   return get_cluster_name().replace("k8.", "")
+
+def merge_dicts(x, y):
+  z = dict(x)   # start with x's keys and values
+  z.update(y)    # modifies z with y's keys and values & returns None
+  return z
