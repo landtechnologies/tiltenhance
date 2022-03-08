@@ -1,0 +1,85 @@
+load('../tilt_env/Tiltfile', 'tilt_env_get_or_random', 'tilt_env_set', 'tilt_env_delete')
+
+def local_resource_ext(name, cmd, on_destroy, **kwargs):
+  if config.tilt_subcommand == 'down':
+    on_destroy()
+  else:
+    local_resource(name, cmd, **kwargs)
+
+def s3_bucket(resource_name):
+  bucket_prefix = os.getenv('TEST_BUCKET_PREFIX', '')
+  bucket_name = tilt_env_get_or_random(resource_name, val_prefix=bucket_prefix)
+
+  def destroy_bucket():
+    print("Deleting s3 bucket %s" % bucket_name)
+    local('(! aws s3api head-bucket --bucket %s) || aws s3 rb s3://%s --force' % (bucket_name, bucket_name))
+    tilt_env_delete(resource_name)
+
+  print("Registering s3 bucket %s under name %s" % (bucket_name, resource_name))
+
+  local_resource_ext(
+    resource_name, 
+    '''bucket="%s" && \
+      (aws s3api head-bucket --bucket "$bucket" || \
+        aws s3api create-bucket --bucket "$bucket" --region "$(aws region)" --create-bucket-configuration LocationConstraint="$(aws region)" \
+      ) \
+      && cors_json=$(mktemp) \
+      && echo '{
+        "CORSRules": [
+          {
+            "AllowedOrigins": ["*"],
+            "AllowedHeaders": ["Authorization"],
+            "AllowedMethods": ["GET"],
+            "MaxAgeSeconds": 3000
+          }
+        ]
+      }' > $cors_json && \
+      aws s3api put-bucket-cors --bucket "$bucket" --cors-configuration file://$cors_json''' % bucket_name,
+    on_destroy=destroy_bucket
+  )
+
+  return bucket_name
+
+def ecr_repo(resource_name, persistent=False):
+  repo_prefix = os.getenv('TEST_REPO_PREFIX', '')
+  repo_name = tilt_env_get_or_random(resource_name, val_prefix=repo_prefix)
+
+  def destroy_repo():
+    config.define_bool("delete-persistent-repos")
+    if not persistent or config.parse().get("delete-persistent-repos"):
+      print("Deleting ECR repository %s" % repo_name)
+      local('(! aws ecr describe-repositories --repository-names "%s") || aws ecr delete-repository --repository-name "%s" --force' % (repo_name, repo_name))
+      tilt_env_delete(resource_name)
+    else:
+      print("Not deleting persistent ECR repository %s" % repo_name)
+      print("Tilt down with '--delete-persistent-repos' to force deletion.")
+
+  print("Registering ECR Repository %s under name %s" % (repo_name, resource_name))
+
+  local_resource_ext(
+    resource_name, 
+    '''repo="%s" && \
+      (aws ecr describe-repositories --repository-names "$repo" || aws ecr create-repository --repository-name "$repo")
+    ''' % repo_name,
+    on_destroy=destroy_repo
+  )
+
+  return repo_name
+
+def credstash_key(resource_name, val):  
+  key_prefix = os.getenv('TEST_CREDSTASH_PREFIX', '')
+  key_name = tilt_env_get_or_random(resource_name, val_prefix=key_prefix)
+
+  def destroy_key():
+    local('credstash delete %s' % key_name)
+    tilt_env_delete(resource_name)
+
+  print("Registering credstash key %s under name %s" % (key_name, resource_name))
+
+  local_resource_ext(
+    resource_name, 
+    'credstash put -a %s %s' % (key_name, val),
+    on_destroy=destroy_key
+  )
+
+  return key_name

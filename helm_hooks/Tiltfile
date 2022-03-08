@@ -1,0 +1,106 @@
+def _get_obj_reference(obj):
+  return "%s:%s:%s" % (obj["metadata"]["name"], obj["kind"].lower(), obj["metadata"]["namespace"])
+
+def _get_workloads(decoded_yaml):
+  workload_kinds = ["Deployment", "Pod", "Job", "StatefulSet"]
+
+  return [
+    obj for obj in decoded_yaml if obj["kind"] in workload_kinds
+  ]
+
+def _get_hook_name(workload):
+  return workload["metadata"].get("annotations", {}).get("helm.sh/hook")
+
+def _get_hook_workloads(workloads):
+  return [
+    obj for obj in workloads if _get_hook_name(obj)
+  ]
+
+def _get_non_hook_workloads(workloads):
+  return [
+    obj for obj in workloads if not _get_hook_name(obj)
+  ]
+
+def _validate_hooks(workloads):
+  hooks = _get_hook_workloads(workloads)
+
+  unsupported_hooks = ["pre-delete", "post-delete", "crd-install"]
+
+  found_unsupported_hooks = []
+  found_unsupported_hook_objs = []
+
+  for hook in hooks:
+    hook_name = _get_hook_name(hook)
+    if hook_name in unsupported_hooks:
+      if hook_name not in found_unsupported_hooks:
+        found_unsupported_hooks.append(hook_name)
+      found_unsupported_hook_objs.append(_get_obj_reference(hook))
+
+  if len(found_unsupported_hooks) > 0:
+    fail("The helm hook(s) %s are not supported. Found in resources %s" % (', '.join(found_unsupported_hooks), ', '.join(found_unsupported_hook_objs)))
+
+def _get_excluded_workloads(workloads):
+  hooks = _get_hook_workloads(workloads)
+
+  excluded_hooks = ["pre-rollback", "post-rollback", "test-success", "test-failure", "test"]
+
+  return [hook for hook in hooks if _get_hook_name(hook) in excluded_hooks]
+
+def _has_hook(hook_obj, possible_hook_names):
+  hook_str = _get_hook_name(hook_obj) or ""
+  return len([hook for hook in possible_hook_names if hook in hook_str]) > 0
+
+def _assign_dependencies(workloads):
+  hooks = _get_hook_workloads(workloads)
+  non_hooks = _get_non_hook_workloads(workloads)
+
+  pre_install_hooks = ["pre-install", "pre-upgrade"]
+
+  pre_install_references = [
+    _get_obj_reference(hook)
+    for hook in hooks if _has_hook(hook, pre_install_hooks)
+  ]
+
+  if len(pre_install_references):
+    for workload in non_hooks:
+      print("Pre install deps for %s: %s" % (_get_obj_reference(workload), ", ".join(pre_install_references)))
+      k8s_resource(workload=_get_obj_reference(workload), resource_deps=pre_install_references)
+
+  post_install_hooks = ["post-install", "post-upgrade"]
+  post_install_hook_workloads = [
+    hook for hook in hooks if _has_hook(hook, post_install_hooks)
+  ]
+
+  non_post_install_hook_references = [
+    _get_obj_reference(hook)
+    for hook in workloads if not _has_hook(hook, post_install_hooks)
+  ]
+
+  if len(pre_install_references):
+    for workload in post_install_hook_workloads:
+      print("Post install deps for %s: %s" % (_get_obj_reference(workload), ", ".join(non_post_install_hook_references)))
+      k8s_resource(workload=_get_obj_reference(workload), resource_deps=non_post_install_hook_references)
+
+def helm_install_handle_hooks(yaml):
+  decoded_yaml = decode_yaml_stream(yaml)
+  workloads = _get_workloads(decoded_yaml)
+
+  _validate_hooks(workloads)
+
+  excluded_workload_refs = [_get_obj_reference(workload) for workload in _get_excluded_workloads(workloads)]
+
+  pruned_decoded_yaml = [
+    obj for obj in decoded_yaml if _get_obj_reference(obj) not in excluded_workload_refs
+  ]
+
+  yaml_to_apply = encode_yaml_stream(pruned_decoded_yaml)
+
+  k8s_yaml(yaml_to_apply)
+
+  pruned_workloads = [
+    obj for obj in workloads if _get_obj_reference(obj) not in excluded_workload_refs
+  ]
+
+  _assign_dependencies(pruned_workloads)
+
+  return yaml_to_apply

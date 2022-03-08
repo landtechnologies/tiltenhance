@@ -1,0 +1,115 @@
+def docker_local(ref,
+                 context,
+                 dockerfile='Dockerfile',
+                 run_cmd=[],
+                 env_vars={},
+                 runtime_deps=[]):
+    build_step = "%s_build" % ref
+    build_command = ["docker", "build", "-t", ref, "-f", dockerfile, context]
+    local_resource(build_step, " ".join(build_command))
+
+    exec_command = ["docker", "run", "--rm"] + [
+        "-e %s=\"%s\"" % (key, val) for key, val in env_vars.items()
+    ] + [ref] + run_cmd
+
+    local_resource("%s" % ref,
+                   " ".join(exec_command),
+                   resource_deps=runtime_deps + [build_step])
+
+
+def merge_two_dicts(x, y):
+    z = dict(x)   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
+
+def docker_remote(ref,
+                  build_context,
+                  docker_repo=None,
+                  namespace=None,
+                  dockerfile='Dockerfile',
+                  run_cmd=[],
+                  env_vars={},
+                  runtime_deps=[],
+                  host_ipc=False,
+                  cpu=1,
+                  memory="2056Mi",
+                  annotations={},
+                  readiness_probe={"exec":{"command":["false"] }, "initialDelaySeconds": 120, "periodSeconds": 120}):
+    image_name = ref if docker_repo == None else docker_repo
+
+    resources = {
+        "cpu": cpu,
+        "memory": memory
+    }
+    container_spec = {
+        "name": "main",
+        "image": image_name,
+        "resources": {
+            "requests": resources,
+            "limits": resources
+        }
+    }
+
+    if len(run_cmd) > 0:
+        container_spec["args"] = run_cmd
+
+    if readiness_probe != None:
+        container_spec["readinessProbe"] = readiness_probe
+    if len(env_vars) > 0:
+        container_spec["env"] = [{
+            "name": key,
+            "value": value
+        } for key, value in env_vars.items()]
+
+    if "_" in ref:
+        fail("Invalid k8s resource name: %s" % ref)
+
+    pod_spec = {
+        "containers": [container_spec],
+        "restartPolicy": "Never"
+    }
+    if host_ipc:
+        pod_spec["hostIPC"] = host_ipc
+
+    job_spec = {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+            "name": ref
+        },
+        "spec": {
+            "parallelism": 1,
+            "completions": 1,
+            "backoffLimit": 0,
+            "template": {
+                "metadata": {
+                    "annotations": merge_two_dicts({
+                        "sidecar.istio.io/inject": "false"
+                    }, annotations)
+                },
+                "spec": pod_spec
+            }
+        }
+    }
+
+    if namespace != None:
+        job_spec["metadata"]["namespace"] = namespace
+
+    k8s_yaml(encode_yaml(job_spec))
+    k8s_resource(ref, resource_deps=runtime_deps)
+
+    docker_build(image_name, build_context, dockerfile=dockerfile)
+
+
+def docker_task(ref, build_context, run_remote=False, **kwargs):
+    if run_remote:
+        return docker_remote(ref, build_context, **kwargs)
+    else:
+        local_args = dict(kwargs)
+        local_args.pop("namespace", None)
+        local_args.pop("docker_repo", None)
+        local_args.pop("readiness_probe", None)
+        local_args.pop("host_ipc", None)
+        local_args.pop("cpu", None)
+        local_args.pop("memory", None)
+        return docker_local(ref, build_context, **local_args)

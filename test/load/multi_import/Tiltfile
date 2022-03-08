@@ -1,0 +1,5 @@
+load('../../basic/Tiltfile', 'simple', 'call_func')
+
+def test_func(arg):
+  simple(10)
+  return call_func(arg)

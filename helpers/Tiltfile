@@ -1,0 +1,37 @@
+load('ext://local_output', 'local_output')
+
+def get_service_url(yaml, service_name = None, port = None):
+  decoded_yaml = decode_yaml_stream(yaml)
+
+  services = [obj for obj in decoded_yaml if obj["kind"] == "Service"]
+
+  if service_name:
+    services = [service for service in services if service["metadata"]["name"] == service_name]
+
+  if len(services) > 1:
+    fail("Multiple services found (%s)" % ', '.join([service["metadata"]["name"] for service in services]))
+  elif len(services) == 0:
+    fail("No services found")
+
+  service = services[0]
+
+  ports = service["spec"]["ports"]
+
+  if port:
+    ports = [port_obj for port_obj in ports if port_obj.get("name") == port or port_obj["port"] == port]
+
+  if len(ports) > 1:
+    fail("Multiple ports found (%s) in %s" % (', '.join(["%s (%s)" % (port["name"], port["port"]) for port in ports]), service["metadata"]["name"]))
+  elif len(ports) == 0:
+    fail("No ports found")
+
+  port = ports[0]
+
+  return "%s.%s:%s" % (service["metadata"]["name"], service["metadata"]["namespace"], port["port"])
+
+def get_cluster_name():
+  context = k8s_context()
+  return local_output('kubectl config view -o json | jq -r ".contexts[] | select(.name == \\"%s\\") | .context.cluster"' % context)
+
+def get_hosted_zone_name():
+  return get_cluster_name().replace("k8.", "")

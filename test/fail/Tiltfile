@@ -1,0 +1,4 @@
+
+
+def should_fail():
+  fail("Blah")

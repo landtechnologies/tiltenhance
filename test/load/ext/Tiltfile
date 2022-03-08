@@ -1,0 +1,4 @@
+load('ext://local_output', 'local_output')
+
+def test_func(str):
+  return local_output(f"echo '{str}'")

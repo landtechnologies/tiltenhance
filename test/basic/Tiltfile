@@ -1,0 +1,5 @@
+def call_func(arg):
+  return arg
+
+def simple(arg):
+  return call_func(arg) + 1

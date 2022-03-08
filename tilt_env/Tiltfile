@@ -1,0 +1,74 @@
+load('ext://local_output', 'local_output')
+
+def _get_env():
+  return read_json(".tiltenv", default={})
+
+def _recursive_get(key_segments, json):
+  key = key_segments.pop(0)
+  if len(key_segments):
+    return _recursive_get(key_segments, json.get(key, {}))
+  else:
+    return json.get(key, None)
+
+def _recursive_set(key_segments, val, json):
+  key = key_segments.pop(0)
+  if len(key_segments):
+    current_val = json.get(key)
+    if not current_val:
+      current_val = {}
+      json[key] = current_val
+    _recursive_set(key_segments, val, current_val)
+  else:
+    json[key] = val
+
+def _recursive_delete(key_segments, json):
+  key = key_segments.pop(0)
+  current_val = json.get(key)
+  if current_val:
+    if len(key_segments):
+        _recursive_delete(key_segments, current_val)
+    else:
+      json.pop(key)
+
+def _save_json(json):
+  local('echo %s > .tiltenv' % shlex.quote(encode_json(json)))
+
+def tilt_env_get(key):
+  json = _get_env()
+  return _recursive_get(key.split("."), json)
+
+def tilt_env_set(key, val):
+  json = _get_env()
+  _recursive_set(key.split("."), val, json)
+  _save_json(json)
+
+def tilt_env_delete(key):
+  json = _get_env()
+  _recursive_delete(key.split("."), json)
+  local('echo %s > .tiltenv' % shlex.quote(encode_json(json)))
+
+def tilt_env_get_or_random(key, random_len = 32, val_prefix = ''):
+  val = tilt_env_get(key)
+  if not val:
+    val = val_prefix + local_output("echo a-$(head /dev/urandom | env LC_ALL=C tr -dc a-z0-9 | head -c %s ; echo '')" % random_len)
+    tilt_env_set(key, val)
+  return val
+
+def tilt_env_list_add(key, val):
+  json = _get_env()
+  list_val = _recursive_get(key.split("."), json)
+  if not list_val:
+    list_val = []
+    _recursive_set(key.split("."), list_val, json)
+
+  list_val.append(val)
+  _save_json(json)
+
+def tilt_env_list_remove(key, val):
+  json = _get_env()
+  list_val = _recursive_get(key.split("."), json)
+  if not list_val:
+    return
+
+  list_val.remove(val)
+  _save_json(json)
