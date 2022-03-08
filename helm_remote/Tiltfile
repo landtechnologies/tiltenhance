@@ -92,7 +92,7 @@ def helm_remote_yaml(chart, repo_url='', repo_name='', release_name='', values=[
         pull_command += ' --password %s' % password
 
     # ======== Perform Installation
-    local('rm -rf %s' % chart_target,
+    local('rm -rf "%s"' % chart_target,
           command_bat='if exist %s ( rd /s /q %s )' % (chart_target, chart_target))
     local(pull_command)
 
