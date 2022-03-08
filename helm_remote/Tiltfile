@@ -83,7 +83,7 @@ def helm_remote_yaml(chart, repo_url='', repo_name='', release_name='', values=[
     chart_target = os.path.join(pull_target, chart)
 
     # -------- commands
-    pull_command = 'helm fetch %s/%s --untar --destination %s' % (repo_name, chart, pull_target)
+    pull_command = 'helm fetch %s/%s --untar --destination "%s"' % (repo_name, chart, pull_target)
     if version != '':
         pull_command += ' --version %s' % version
     if username != '':
