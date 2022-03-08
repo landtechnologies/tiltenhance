@@ -13,10 +13,10 @@ class DockerLocalTest(unittest.TestCase):
                           "docker_local",
                           mocks={'local_resource': local_resource},
                           ref="my_image",
-                          context="./path/to/dockerfile")
+                          context="././path/to/build/context")
 
         local_resource.assert_any_call(
-            "my_image_build", "docker build -t my_image ./path/to/dockerfile")
+            "my_image_build", "docker build -t my_image -f Dockerfile ././path/to/build/context")
 
     def test_delegates_to_local_resource_for_run(self):
         local_resource = Mock()
@@ -25,7 +25,7 @@ class DockerLocalTest(unittest.TestCase):
                           "docker_local",
                           mocks={'local_resource': local_resource},
                           ref="my_image",
-                          context="./path/to/dockerfile")
+                          context="././path/to/build/context")
 
         local_resource.assert_called_with("my_image",
                                           "docker run --rm my_image",
@@ -38,7 +38,7 @@ class DockerLocalTest(unittest.TestCase):
                           "docker_local",
                           mocks={'local_resource': local_resource},
                           ref="my_image",
-                          context="./path/to/dockerfile",
+                          context="././path/to/build/context",
                           runtime_deps=["something", "else"])
 
         local_resource.assert_called_with(
@@ -53,7 +53,7 @@ class DockerLocalTest(unittest.TestCase):
                           "docker_local",
                           mocks={'local_resource': local_resource},
                           ref="my_image",
-                          context="./path/to/dockerfile",
+                          context="././path/to/build/context",
                           env_vars={
                               "DOG": 1,
                               "CAT": "two"
@@ -71,7 +71,7 @@ class DockerLocalTest(unittest.TestCase):
                           "docker_local",
                           mocks={'local_resource': local_resource},
                           ref="my_image",
-                          context="./path/to/dockerfile",
+                          context="././path/to/build/context",
                           run_cmd=["sh", "echo", "hi"])
 
         local_resource.assert_called_with(
@@ -79,7 +79,18 @@ class DockerLocalTest(unittest.TestCase):
             'docker run --rm my_image sh echo hi',
             resource_deps=["my_image_build"])
 
+    def test_overrides_dockerfile_for_build(self):
+        local_resource = Mock()
 
+        run_tiltfile_func("docker_task/Tiltfile",
+                          "docker_local",
+                          mocks={'local_resource': local_resource},
+                          ref="my_image",
+                          dockerfile="another.Dockerfile",
+                          context="././path/to/build/context")
+
+        local_resource.assert_any_call(
+            "my_image_build", "docker build -t my_image -f another.Dockerfile ././path/to/build/context")
 class DockerRemoteTest(unittest.TestCase):
     def test_delegates_to_docker_build_for_build(self):
         docker_build = Mock()
@@ -94,10 +105,29 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="./path/to/build/context",
                           readiness_probe=None)
 
-        docker_build.assert_called_with("my-image", "./path/to/dockerfile")
+        docker_build.assert_called_with("my-image", "./path/to/build/context", dockerfile="Dockerfile")
+
+    def test_overrides_dockerfile_for_build(self):
+        docker_build = Mock()
+        k8s_yaml = Mock()
+        k8s_resource = Mock()
+
+        run_tiltfile_func("docker_task/Tiltfile",
+                          "docker_remote",
+                          mocks={
+                              'docker_build': docker_build,
+                              "k8s_yaml": k8s_yaml,
+                              "k8s_resource": k8s_resource
+                          },
+                          ref="my-image",
+                          dockerfile="another.Dockerfile",
+                          build_context="./path/to/build/context",
+                          readiness_probe=None)
+
+        docker_build.assert_called_with("my-image", "./path/to/build/context", dockerfile="another.Dockerfile")
 
     def test_uses_repository_instead_if_provided(self):
         docker_build = Mock()
@@ -113,10 +143,10 @@ class DockerRemoteTest(unittest.TestCase):
                           },
                           ref="my-image",
                           docker_repo="my.aws/repo",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           readiness_probe=None)
 
-        docker_build.assert_called_with("my.aws/repo", "./path/to/dockerfile")
+        docker_build.assert_called_with("my.aws/repo", "././path/to/build/context", dockerfile="Dockerfile")
 
     def test_generates_k8_yaml_job_with_defaults_for_image(self):
         docker_build = Mock()
@@ -131,7 +161,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile")
+                          build_context="././path/to/build/context")
 
         expected_spec = yaml.safe_load("""
           apiVersion: batch/v1
@@ -184,7 +214,7 @@ class DockerRemoteTest(unittest.TestCase):
                           },
                           ref="my-image",
                           docker_repo="my.aws/repo",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           cpu="2000m",
                           memory="4Gi",
                           readiness_probe=None)
@@ -215,7 +245,7 @@ class DockerRemoteTest(unittest.TestCase):
                           },
                           ref="my-image",
                           docker_repo="my.aws/repo",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           readiness_probe=None)
 
         assert k8s_yaml.call_count == 1
@@ -236,7 +266,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           readiness_probe=None)
 
@@ -257,7 +287,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           readiness_probe=None,
                           runtime_deps=["a", "b"])
@@ -278,7 +308,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           readiness_probe=None,
                           env_vars={
@@ -309,7 +339,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           readiness_probe={"httpGet": {
                               "path": "/health"
@@ -336,7 +366,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           readiness_probe=None,
                           run_cmd=["bloop", "--something", "--another-thing"])
@@ -360,7 +390,7 @@ class DockerRemoteTest(unittest.TestCase):
                               "k8s_resource": k8s_resource
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           namespace="somewhere",
                           annotations={
                               'custom': 'annotation'
@@ -388,7 +418,7 @@ class DockerRemoteTest(unittest.TestCase):
                     "k8s_resource": k8s_resource
                 },
                 ref="my_image",
-                build_context="./path/to/dockerfile",
+                build_context="././path/to/build/context",
             )
 
 
@@ -404,11 +434,11 @@ class DockerTaskTest(unittest.TestCase):
                               'k8s_yaml': k8s_yaml
                           },
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           run_remote=False)
 
         local_resource.assert_any_call(
-            "my-image_build", "docker build -t my-image ./path/to/dockerfile")
+            "my-image_build", "docker build -t my-image -f Dockerfile ././path/to/build/context")
         k8s_yaml.call_count == 0
 
     def test_strips_out_non_local_args(self):
@@ -418,14 +448,14 @@ class DockerTaskTest(unittest.TestCase):
                           "docker_task",
                           mocks={'local_resource': local_resource},
                           ref="my-image",
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           run_remote=False,
                           namespace="dave",
                           docker_repo="test",
                           readiness_probe="1234")
 
         local_resource.assert_any_call(
-            "my-image_build", "docker build -t my-image ./path/to/dockerfile")
+            "my-image_build", "docker build -t my-image -f Dockerfile ././path/to/build/context")
 
     def test_runs_on_remote(self):
         docker_build = Mock()
@@ -441,7 +471,7 @@ class DockerTaskTest(unittest.TestCase):
                           },
                           ref="my-image",
                           run_remote=True,
-                          build_context="./path/to/dockerfile",
+                          build_context="././path/to/build/context",
                           readiness_probe=None)
 
         assert k8s_yaml.call_count == 1
