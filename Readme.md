@@ -42,13 +42,20 @@ _I want to do some other features that aren't document_
 ## How on earth do I use this?!
 
 Great question. If you haven't you'll need to make yourself a `Tiltfile`. [Here's the docs; figure it out](https://docs.tilt.dev/api.html).
-This _tiltenhance_ package should live within the `tilt_module` directory which sits alongside your _Tiltfile_.
+
+You'll then need to register this extensions repo like so:
+```py
+v1alpha1.extension_repo(name='tiltenhance', url='https://github.com/landtechnologies/tiltenhance')
+```
 
 Next let's import some stuff. If you've been reading the tilt docs, you'll know you can require _Tiltfiles_ with `load(...)`
 
 Pop something like this in your _Tiltfile_ to use the `docker_remote` resource from the `docker_task` extension.
 
 ```py
+## Register
+v1alpha1.extension(name='docker_task', repo_name='tiltenhance', repo_path='docker_task')
+
 ## Import
 load("ext://tiltenhance/docker_task", "docker_remote")
 
@@ -56,7 +63,7 @@ load("ext://tiltenhance/docker_task", "docker_remote")
 docker_remote("my-important-task", "./path/to/Dockerfile")
 ```
 
-(Note: the "ext://" helper is meant for loading hosted resources, but fortunately for us it checks for local _tilt_modules_ first. This is undocumented, so may break - if so, just replace this arg with a relative Tiltfile path; e.g. _"./tilt_modules/tiltenhance/docker_task/Tiltfile"_)
+(We know that registering the repo and extension, and then loading the function is wordy, but we'll see what we can do about that later.)
 
 ## Can I contribute?
 
