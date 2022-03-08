@@ -479,3 +479,131 @@ class CredstashKeyIntegrationTest(unittest.TestCase):
         assert run_tiltfile_func("tilt_env/Tiltfile",
                                  "tilt_env_get",
                                  key="my_key") == None
+
+
+class TempDirUnitTest(unittest.TestCase):
+    def setUp(self):
+        if os.path.exists(".tiltenv"):
+            os.remove(".tiltenv")
+
+    def test_it_creates_temporary_dir_path_if_not_present(self):
+        local_resource = Mock()
+
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource},
+            resource_name="my_dir"
+        )
+
+        assert local_resource.call_count == 1
+        assert local_resource.call_args[0][0] == "my_dir"
+        assert dir_path in local_resource.call_args[0][1]
+
+    def test_it_uses_temporary_dir_path_if_present(self):
+        local_resource = Mock()
+
+        existing_path="directory_path"
+
+        run_tiltfile_func("tilt_env/Tiltfile",
+                          "tilt_env_set",
+                          key="my_dir",
+                          val=existing_path)
+
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource},
+            resource_name="my_dir"
+        )
+
+        assert dir_path == existing_path
+        assert local_resource.call_count == 1
+        assert local_resource.call_args[0][0] == "my_dir"
+        assert existing_path in local_resource.call_args[0][1]
+
+
+class TempDirIntegrationTest(unittest.TestCase):
+    def setUp(self):
+        if os.path.exists(".tiltenv"):
+            os.remove(".tiltenv")
+
+    def tearDown(self):
+        pass
+
+    def test_creates_dir_on_first_run(self):
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        assert os.path.exists(dir_path)
+
+    def test_leaves_dir_unchanged_on_second_run(self):
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        subdir = "%s/xyz" % dir_path
+        os.mkdir(subdir)
+
+        dir_path2 = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        assert dir_path == dir_path2
+        assert os.path.exists(subdir)
+
+    def test_recreates_dir_on_second_run(self):
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        os.rmdir(dir_path)
+        assert not os.path.exists(dir_path)
+
+        dir_path2 = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        assert dir_path == dir_path2
+        assert os.path.exists(dir_path)
+
+    def test_deletes_on_teardown(self):
+        dir_path = run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={'local_resource': local_resource_integration},
+            resource_name="my_dir",
+        )
+
+        os.mkdir("%s/xyz" % dir_path)
+
+        run_tiltfile_func(
+            "local_resource_ext/Tiltfile",
+            "temp_dir",
+            mocks={
+                'local_resource': local_resource_integration,
+                'config': TiltConfig('down')
+            },
+            resource_name="my_dir",
+        )
+
+        assert not os.path.exists(dir_path)
+        assert run_tiltfile_func("tilt_env/Tiltfile",
+                                 "tilt_env_get",
+                                 key="my_dir") == None

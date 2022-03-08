@@ -85,3 +85,21 @@ def credstash_key(resource_name, val):
   )
 
   return key_name
+
+def temp_dir(resource_name):
+  tmp_dir = tilt_env_get_or_random(resource_name, random_len=0, val_prefix=str(local("mktemp -d -u")).rstrip('\n'))
+
+  def teardown_dir():
+    print("Deleting temp directory %s" % tmp_dir)
+    local("rm -rf %s" % tmp_dir)
+    tilt_env_delete(resource_name)
+
+  print("Registering temp directory %s under name %s" % (tmp_dir, resource_name))
+
+  local_resource_ext(
+    resource_name, 
+    'mkdir -p "%s"' % tmp_dir,
+    on_destroy=teardown_dir
+  )
+
+  return tmp_dir
