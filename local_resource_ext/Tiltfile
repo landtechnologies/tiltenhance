@@ -1,7 +1,10 @@
 load('../tilt_env/Tiltfile', 'tilt_env_get_or_random', 'tilt_env_set', 'tilt_env_delete')
 
+config.define_bool("delete-persistent-repos")
+
 def local_resource_ext(name, cmd, on_destroy, **kwargs):
   if config.tilt_subcommand == 'down':
+    local_resource(name, "true")
     on_destroy()
   else:
     local_resource(name, cmd, **kwargs)
@@ -45,7 +48,6 @@ def ecr_repo(resource_name, persistent=False):
   repo_name = tilt_env_get_or_random(resource_name, val_prefix=repo_prefix)
 
   def destroy_repo():
-    config.define_bool("delete-persistent-repos")
     if not persistent or config.parse().get("delete-persistent-repos"):
       print("Deleting ECR repository %s" % repo_name)
       local('(! aws ecr describe-repositories --repository-names "%s") || aws ecr delete-repository --repository-name "%s" --force' % (repo_name, repo_name))

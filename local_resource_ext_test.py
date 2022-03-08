@@ -41,7 +41,6 @@ def test_delegates_to_local_resource_when_not_tilt_down():
                                       random="kwarg")
     assert on_destroy.call_count == 0
 
-
 def test_executes_on_destroy_when_tilt_down():
     local_resource = Mock()
     on_destroy = Mock()
@@ -56,11 +55,24 @@ def test_executes_on_destroy_when_tilt_down():
                       cmd="something",
                       on_destroy=on_destroy,
                       random="kwarg")
-
-    assert local_resource.call_count == 0
     assert on_destroy.call_count == 1
 
+def test_registers_null_resource_on_tilt_down():
+    local_resource = Mock()
+    on_destroy = Mock()
 
+    run_tiltfile_func("local_resource_ext/Tiltfile",
+                      "local_resource_ext",
+                      mocks={
+                          'local_resource': local_resource,
+                          'config': TiltConfig('down')
+                      },
+                      name="my_resource",
+                      cmd="something",
+                      on_destroy=on_destroy,
+                      random="kwarg")
+    assert local_resource.call_count == 1
+    local_resource.assert_called_with("my_resource", "true")
 class S3BucketUnitTest(unittest.TestCase):
     def setUp(self):
         if os.path.exists(".tiltenv"):
