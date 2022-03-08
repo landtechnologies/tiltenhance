@@ -26,7 +26,7 @@ help:
 
 ## Install dependencies
 install-deps:
-	pipenv install
+	pipenv sync -d
 
 ## Run tests
 test: install-deps
