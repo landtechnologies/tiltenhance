@@ -2,7 +2,7 @@ import yaml
 import urllib.request
 import textwrap
 import os
-import shlex
+import shlex # Required as Tilt subdependency 
 import subprocess
 import os.path
 import json

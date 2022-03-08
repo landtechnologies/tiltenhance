@@ -1,7 +1,6 @@
 from tiltfile_runner import run_tiltfile_func
 import unittest
 import os
-import pytest
 
 class EnvTest(unittest.TestCase):
 

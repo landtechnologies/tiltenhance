@@ -1,4 +1,4 @@
-from tiltfile_runner import run_tiltfile_func, TiltConfig
+from tiltfile_runner import run_tiltfile_func
 from unittest.mock import Mock
 import unittest
 import pytest
