@@ -107,54 +107,11 @@ spec:
 
     assert url == "dave.test:1234"
 
-#   def test_it_fails_if_multiple_services(self):
-#     with pytest.raises(Exception, match=r".*Tiltfile failed.*"):
-#       run_tiltfile_func("helpers/Tiltfile", "get_service_url", 
-#         yaml="""
-# apiVersion: apps/v1
-# kind: Service
-# metadata:
-#   name: dave
-#   namespace: test
-# spec:
-#   ports:
-#   - name: test
-#     port: 6379
-#     protocol: TCP
-#     targetPort: test
-# ---
-# apiVersion: apps/v1
-# kind: Service
-# metadata:
-#   name: dave2
-#   namespace: test
-# spec:
-#   ports:
-#   - name: test
-#     port: 6379
-#     protocol: TCP
-#     targetPort: test
-#   """
-#       )
+class MergeDictsTest(unittest.TestCase):
+  def test_it_merges_two_dicts(self):
+    dict1 = { "dict1": "item1", "dict1": 2 }
+    dict2 = { "dict2": { "item": 3 }, "dict2": [ "item", "four" ] }
 
-#   def test_it_fails_if_multiple_ports(self):
-#     with pytest.raises(Exception, match=r".*Tiltfile failed.*"):
-#       run_tiltfile_func("helpers/Tiltfile", "get_service_url", 
-#         yaml="""
-# apiVersion: apps/v1
-# kind: Service
-# metadata:
-#   name: dave
-#   namespace: test
-# spec:
-#   ports:
-#   - name: test
-#     port: 6379
-#     protocol: TCP
-#     targetPort: test
-#   - name: test2
-#     port: 6380
-#     protocol: TCP
-#     targetPort: test2
-#   """
-#       )
+    result = run_tiltfile_func("helpers/Tiltfile", "merge_dicts", x=dict1, y=dict2)
+
+    assert result == { "dict1": "item1", "dict1": 2, "dict2": { "item": 3 }, "dict2": [ "item", "four" ] }
