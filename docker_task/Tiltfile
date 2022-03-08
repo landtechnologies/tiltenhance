@@ -108,4 +108,5 @@ def docker_task(ref, build_context, run_remote=False, **kwargs):
         local_args.pop("host_ipc", None)
         local_args.pop("cpu", None)
         local_args.pop("memory", None)
+        local_args.pop("annotations", None)
         return docker_local(ref, build_context, **local_args)
