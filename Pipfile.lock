@@ -34,11 +34,11 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:46e51f56f1c5784e4245e036503635fa71b722775657b6e1acf21ec5b906974c",
-                "sha256:7b166096f9413b41caf7cc6f4edfd5b3c3ab9d7c61eb120a649e69485c98131a"
+                "sha256:7ea8ef1ff7c4882ab59b337662f90ddf5ea860e95e7e209dca593a34ea585b1b",
+                "sha256:d2da7ccbc5ddd61fe3cd45fcbd3de380d9e3a15bfa8fbfd2d9259a93dcc60c56"
             ],
             "markers": "python_version >= '3.6'",
-            "version": "==1.24.13"
+            "version": "==1.24.18"
         },
         "cffi": {
             "hashes": [
@@ -186,11 +186,11 @@
         },
         "pytest": {
             "hashes": [
-                "sha256:9ce3ff477af913ecf6321fe337b93a2c0dcf2a0a1439c43f5452112c1e4280db",
-                "sha256:e30905a0c131d3d94b89624a1cc5afec3e0ba2fbdb151867d8e0ebd49850f171"
+                "sha256:b555252a95bbb2a37a97b5ac2eb050c436f7989993565f5e0c9128fcaacadd0e",
+                "sha256:f1089d218cfcc63a212c42896f1b7fbf096874d045e1988186861a1a87d27b47"
             ],
             "index": "pypi",
-            "version": "==7.0.1"
+            "version": "==7.1.0"
         },
         "python-dateutil": {
             "hashes": [
