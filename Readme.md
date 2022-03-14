@@ -1,6 +1,6 @@
 # TiltEnhance
 
-A suite of LandTech Tiltfiles, to accelerate end-to-end application development 🔥
+A public suite of LandTech Tiltfiles, to accelerate end-to-end application development 🔥
 
 ## Wait, what is Tiltfiles?!
 
